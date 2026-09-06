@@ -71,18 +71,11 @@ class BatteryRepository(private val context: Context) {
 
         val currentMa = rawCurrent
             .takeIf { it != Int.MIN_VALUE && it != 0 }
-            ?.let { currentValue ->
-                /*
-                 * Android normally returns microamperes (µA).
-                 * Some manufacturers return mA instead.
-                 *
-                 * Values above 10,000 are safely treated as µA.
-                 * Smaller values are kept as mA.
-                 */
-                if (abs(currentValue) >= 10_000) {
-                    currentValue / 1_000
+            ?.let { value ->
+                if (abs(value) >= 10_000) {
+                    value / 1_000
                 } else {
-                    currentValue
+                    value
                 }
             }
 
@@ -102,7 +95,7 @@ class BatteryRepository(private val context: Context) {
             isCharging = isCharging,
             isFull = isFull,
             level = level,
-            voltage = voltageMv.takeIf { it > 0 }?.div(1000f),
+            voltage = voltageMv.takeIf { it > 0 }?.div(1_000f),
             temperature = temperatureTenths.takeIf { it >= 0 }?.div(10f),
             health = when (healthCode) {
                 BatteryManager.BATTERY_HEALTH_GOOD -> "Good"
