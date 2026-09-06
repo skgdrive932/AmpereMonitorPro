@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -20,11 +22,15 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,12 +46,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 private val AppBackground = Color(0xFF0E0F11)
 private val CardBackground = Color(0xFF1A1C20)
 private val AccentGreen = Color(0xFF42C964)
 private val AccentAmber = Color(0xFFFFB74D)
+private val AccentRed = Color(0xFFFF6B6B)
 private val SecondaryText = Color(0xFFABB0B8)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,6 +70,20 @@ fun AmpereMonitorApp() {
         mutableIntStateOf(0)
     }
 
+    var showAbout by remember {
+        mutableStateOf(false)
+    }
+
+    var showSettings by remember {
+        mutableStateOf(false)
+    }
+
+    val snackbarHostState = remember {
+        SnackbarHostState()
+    }
+
+    val scope = rememberCoroutineScope()
+
     val snapshot by produceState(
         initialValue = repository.read(),
         key1 = refreshKey
@@ -70,9 +94,30 @@ fun AmpereMonitorApp() {
         }
     }
 
+    if (showAbout) {
+        AboutDialog(
+            onDismiss = {
+                showAbout = false
+            }
+        )
+    }
+
+    if (showSettings) {
+        SettingsDialog(
+            onDismiss = {
+                showSettings = false
+            }
+        )
+    }
+
     MaterialTheme {
         Scaffold(
             containerColor = AppBackground,
+            snackbarHost = {
+                SnackbarHost(
+                    hostState = snackbarHostState
+                )
+            },
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
@@ -83,7 +128,11 @@ fun AmpereMonitorApp() {
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = {}) {
+                        IconButton(
+                            onClick = {
+                                showAbout = true
+                            }
+                        ) {
                             Text(
                                 text = "ⓘ",
                                 color = Color.White,
@@ -92,7 +141,17 @@ fun AmpereMonitorApp() {
                         }
                     },
                     actions = {
-                        IconButton(onClick = { refreshKey++ }) {
+                        IconButton(
+                            onClick = {
+                                refreshKey++
+
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(
+                                        message = "Battery data refreshed"
+                                    )
+                                }
+                            }
+                        ) {
                             Text(
                                 text = "↻",
                                 color = Color.White,
@@ -100,7 +159,11 @@ fun AmpereMonitorApp() {
                             )
                         }
 
-                        IconButton(onClick = {}) {
+                        IconButton(
+                            onClick = {
+                                showSettings = true
+                            }
+                        ) {
                             Text(
                                 text = "⚙",
                                 color = Color.White,
@@ -164,6 +227,14 @@ fun AmpereMonitorApp() {
                 StatusCard(snapshot)
 
                 Text(
+                    text = "Last updated: ${formatTime(snapshot.updatedAt)}",
+                    color = SecondaryText,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Text(
                     text = "Auto-refreshes every 3 seconds",
                     color = SecondaryText,
                     fontSize = 12.sp,
@@ -176,7 +247,87 @@ fun AmpereMonitorApp() {
 }
 
 @Composable
+private fun AboutDialog(
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = CardBackground,
+        titleContentColor = Color.White,
+        textContentColor = SecondaryText,
+        title = {
+            Text("About Ampere Monitor")
+        },
+        text = {
+            Text(
+                "Version 1.2\
+\
+" +
+                    "This app reads battery level, voltage, temperature, " +
+                    "charging state, health, and current from Android system APIs.\
+\
+" +
+                    "Actual current reporting depends on your phone manufacturer."
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onDismiss
+            ) {
+                Text("Close")
+            }
+        }
+    )
+}
+
+@Composable
+private fun SettingsDialog(
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = CardBackground,
+        titleContentColor = Color.White,
+        textContentColor = SecondaryText,
+        title = {
+            Text("Settings")
+        },
+        text = {
+            Text(
+                "Current unit detection is automatic.\
+\
+" +
+                    "The dashboard refreshes every 3 seconds. " +
+                    "Use the refresh button for an immediate update."
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onDismiss
+            ) {
+                Text("Done")
+            }
+        }
+    )
+}
+
+@Composable
 private fun MainBatteryCard(snapshot: BatterySnapshot) {
+    val currentText = snapshot.currentMa?.let { current ->
+        if (current > 0) {
+            "+$current mA"
+        } else {
+            "$current mA"
+        }
+    } ?: "-- mA"
+
+    val currentColor = when {
+        snapshot.currentMa == null -> SecondaryText
+        snapshot.currentMa > 0 -> AccentGreen
+        snapshot.currentMa < 0 -> AccentAmber
+        else -> SecondaryText
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -197,8 +348,8 @@ private fun MainBatteryCard(snapshot: BatterySnapshot) {
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = snapshot.currentMa?.let { "$it mA" } ?: "-- mA",
-                    color = AccentGreen,
+                    text = currentText,
+                    color = currentColor,
                     fontSize = 38.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -207,14 +358,17 @@ private fun MainBatteryCard(snapshot: BatterySnapshot) {
                     text = when {
                         snapshot.currentMa == null -> "Current unavailable"
                         snapshot.isFull -> "Battery full"
-                        snapshot.isCharging -> "Charging"
-                        else -> "Discharging"
+                        snapshot.currentMa > 0 -> "Charging"
+                        snapshot.currentMa < 0 -> "Discharging"
+                        else -> "Current unavailable"
                     },
                     color = SecondaryText,
                     fontSize = 16.sp
                 )
 
-                Spacer(modifier = Modifier.height(7.dp))
+                Spacer(
+                    modifier = Modifier.height(7.dp)
+                )
 
                 Text(
                     text = snapshot.source,
@@ -336,7 +490,9 @@ private fun StatusCard(snapshot: BatterySnapshot) {
                     .background(statusColor)
             )
 
-            Spacer(modifier = Modifier.size(10.dp))
+            Spacer(
+                modifier = Modifier.size(10.dp)
+            )
 
             Text(
                 text = "Status",
@@ -344,7 +500,9 @@ private fun StatusCard(snapshot: BatterySnapshot) {
                 fontSize = 14.sp
             )
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(
+                modifier = Modifier.weight(1f)
+            )
 
             Text(
                 text = statusText,
@@ -353,4 +511,11 @@ private fun StatusCard(snapshot: BatterySnapshot) {
             )
         }
     }
+}
+
+private fun formatTime(timeInMillis: Long): String {
+    return SimpleDateFormat(
+        "hh:mm:ss a",
+        Locale.getDefault()
+    ).format(Date(timeInMillis))
 }
