@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -33,6 +32,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,7 +55,6 @@ private val AppBackground = Color(0xFF0E0F11)
 private val CardBackground = Color(0xFF1A1C20)
 private val AccentGreen = Color(0xFF42C964)
 private val AccentAmber = Color(0xFFFFB74D)
-private val AccentRed = Color(0xFFFF6B6B)
 private val SecondaryText = Color(0xFFABB0B8)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -114,9 +113,7 @@ fun AmpereMonitorApp() {
         Scaffold(
             containerColor = AppBackground,
             snackbarHost = {
-                SnackbarHost(
-                    hostState = snackbarHostState
-                )
+                SnackbarHost(hostState = snackbarHostState)
             },
             topBar = {
                 CenterAlignedTopAppBar(
@@ -247,65 +244,60 @@ fun AmpereMonitorApp() {
 }
 
 @Composable
-private fun AboutDialog(
-    onDismiss: () -> Unit
-) {
+private fun AboutDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = CardBackground,
         titleContentColor = Color.White,
         textContentColor = SecondaryText,
         title = {
-            Text("About Ampere Monitor")
+            Text(text = "About Ampere Monitor")
         },
         text = {
             Text(
-                "Version 1.2\
-\
-" +
-                    "This app reads battery level, voltage, temperature, " +
-                    "charging state, health, and current from Android system APIs.\
-\
-" +
-                    "Actual current reporting depends on your phone manufacturer."
+                text = """
+                    Version 1.2
+
+                    This app reads battery level, voltage, temperature, charging state, battery health, and current from Android system APIs.
+
+                    Actual current reporting depends on your phone manufacturer.
+                """.trimIndent()
             )
         },
         confirmButton = {
             TextButton(
                 onClick = onDismiss
             ) {
-                Text("Close")
+                Text(text = "Close")
             }
         }
     )
 }
 
 @Composable
-private fun SettingsDialog(
-    onDismiss: () -> Unit
-) {
+private fun SettingsDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = CardBackground,
         titleContentColor = Color.White,
         textContentColor = SecondaryText,
         title = {
-            Text("Settings")
+            Text(text = "Settings")
         },
         text = {
             Text(
-                "Current unit detection is automatic.\
-\
-" +
-                    "The dashboard refreshes every 3 seconds. " +
-                    "Use the refresh button for an immediate update."
+                text = """
+                    Current unit detection is automatic.
+
+                    The dashboard refreshes every 3 seconds. Use the refresh button for an immediate reading.
+                """.trimIndent()
             )
         },
         confirmButton = {
             TextButton(
                 onClick = onDismiss
             ) {
-                Text("Done")
+                Text(text = "Done")
             }
         }
     )
@@ -314,11 +306,7 @@ private fun SettingsDialog(
 @Composable
 private fun MainBatteryCard(snapshot: BatterySnapshot) {
     val currentText = snapshot.currentMa?.let { current ->
-        if (current > 0) {
-            "+$current mA"
-        } else {
-            "$current mA"
-        }
+        if (current > 0) "+$current mA" else "$current mA"
     } ?: "-- mA"
 
     val currentColor = when {
@@ -326,6 +314,14 @@ private fun MainBatteryCard(snapshot: BatterySnapshot) {
         snapshot.currentMa > 0 -> AccentGreen
         snapshot.currentMa < 0 -> AccentAmber
         else -> SecondaryText
+    }
+
+    val currentStatus = when {
+        snapshot.currentMa == null -> "Current unavailable"
+        snapshot.isFull -> "Battery full"
+        snapshot.currentMa > 0 -> "Charging"
+        snapshot.currentMa < 0 -> "Discharging"
+        else -> "Current unavailable"
     }
 
     Card(
@@ -355,13 +351,7 @@ private fun MainBatteryCard(snapshot: BatterySnapshot) {
                 )
 
                 Text(
-                    text = when {
-                        snapshot.currentMa == null -> "Current unavailable"
-                        snapshot.isFull -> "Battery full"
-                        snapshot.currentMa > 0 -> "Charging"
-                        snapshot.currentMa < 0 -> "Discharging"
-                        else -> "Current unavailable"
-                    },
+                    text = currentStatus,
                     color = SecondaryText,
                     fontSize = 16.sp
                 )
