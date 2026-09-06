@@ -61,6 +61,7 @@ private val SecondaryText = Color(0xFFABB0B8)
 @Composable
 fun AmpereMonitorApp() {
     val context = LocalContext.current
+
     val repository = remember {
         BatteryRepository(context.applicationContext)
     }
@@ -89,7 +90,7 @@ fun AmpereMonitorApp() {
     ) {
         while (true) {
             value = repository.read()
-            delay(3_000)
+            delay(1_000)
         }
     }
 
@@ -113,7 +114,9 @@ fun AmpereMonitorApp() {
         Scaffold(
             containerColor = AppBackground,
             snackbarHost = {
-                SnackbarHost(hostState = snackbarHostState)
+                SnackbarHost(
+                    hostState = snackbarHostState
+                )
             },
             topBar = {
                 CenterAlignedTopAppBar(
@@ -232,7 +235,7 @@ fun AmpereMonitorApp() {
                 )
 
                 Text(
-                    text = "Auto-refreshes every 3 seconds",
+                    text = "Auto-refreshes every second",
                     color = SecondaryText,
                     fontSize = 12.sp,
                     textAlign = TextAlign.Center,
@@ -251,16 +254,23 @@ private fun AboutDialog(onDismiss: () -> Unit) {
         titleContentColor = Color.White,
         textContentColor = SecondaryText,
         title = {
-            Text(text = "About Ampere Monitor")
+            Text(
+                text = "About Ampere Monitor"
+            )
         },
         text = {
             Text(
                 text = """
-                    Version 1.2
+                    Ampere Monitor
+                    Version 1.3
 
-                    This app reads battery level, voltage, temperature, charging state, battery health, and current from Android system APIs.
+                    Developer Details
 
-                    Actual current reporting depends on your phone manufacturer.
+                    Name: Sk.Kaushal
+                    Gmail: skgdrive932@gmail.com
+                    Contact No: +91 9779371866
+
+                    This app monitors battery current, charging status, battery level, voltage, temperature, and health.
                 """.trimIndent()
             )
         },
@@ -268,7 +278,9 @@ private fun AboutDialog(onDismiss: () -> Unit) {
             TextButton(
                 onClick = onDismiss
             ) {
-                Text(text = "Close")
+                Text(
+                    text = "Close"
+                )
             }
         }
     )
@@ -282,14 +294,20 @@ private fun SettingsDialog(onDismiss: () -> Unit) {
         titleContentColor = Color.White,
         textContentColor = SecondaryText,
         title = {
-            Text(text = "Settings")
+            Text(
+                text = "Settings"
+            )
         },
         text = {
             Text(
                 text = """
-                    Current unit detection is automatic.
+                    Battery monitor settings
 
-                    The dashboard refreshes every 3 seconds. Use the refresh button for an immediate reading.
+                    • Auto refresh: Every 1 second
+                    • Current unit: Automatic detection
+                    • Manual refresh: Tap the ↻ button
+
+                    Current accuracy depends on your device manufacturer and battery hardware.
                 """.trimIndent()
             )
         },
@@ -297,7 +315,9 @@ private fun SettingsDialog(onDismiss: () -> Unit) {
             TextButton(
                 onClick = onDismiss
             ) {
-                Text(text = "Done")
+                Text(
+                    text = "Done"
+                )
             }
         }
     )
@@ -306,7 +326,11 @@ private fun SettingsDialog(onDismiss: () -> Unit) {
 @Composable
 private fun MainBatteryCard(snapshot: BatterySnapshot) {
     val currentText = snapshot.currentMa?.let { current ->
-        if (current > 0) "+$current mA" else "$current mA"
+        if (current > 0) {
+            "+$current mA"
+        } else {
+            "$current mA"
+        }
     } ?: "-- mA"
 
     val currentColor = when {
@@ -338,7 +362,9 @@ private fun MainBatteryCard(snapshot: BatterySnapshot) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            BatteryGauge(level = snapshot.level)
+            BatteryGauge(
+                level = snapshot.level
+            )
 
             Column(
                 modifier = Modifier.weight(1f)
